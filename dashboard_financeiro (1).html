@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Financeiro</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{--color-background-primary:#ffffff;--color-background-secondary:#f5f5f4;--color-background-tertiary:#f0ede8;--color-text-primary:#1a1a1a;--color-text-secondary:#6b6b6b;--color-border-tertiary:rgba(0,0,0,0.12);--color-border-secondary:rgba(0,0,0,0.22);--font-sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;--border-radius-md:8px;--border-radius-lg:12px;}
+@media(prefers-color-scheme:dark){:root{--color-background-primary:#1e1e1e;--color-background-secondary:#2a2a2a;--color-background-tertiary:#161616;--color-text-primary:#f0f0f0;--color-text-secondary:#a0a0a0;--color-border-tertiary:rgba(255,255,255,0.12);--color-border-secondary:rgba(255,255,255,0.22);}}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font-sans);background:var(--color-background-tertiary);color:var(--color-text-primary);min-height:100vh;}
+.page{max-width:960px;margin:0 auto;padding:1.5rem 1rem 3rem;}
+.hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:8px;}
+.hdr h1{font-size:20px;font-weight:500;}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:1.5rem;}
+.metric{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:.85rem 1rem;}
+.metric .lbl{font-size:11px;color:var(--color-text-secondary);margin-bottom:3px;}
+.metric .val{font-size:20px;font-weight:500;}
+.metric .sub{font-size:11px;color:var(--color-text-secondary);margin-top:1px;}
+.metric.danger .val{color:#A32D2D;}.metric.success .val{color:#3B6D11;}.metric.warn .val{color:#854F0B;}
+.tabs{display:flex;gap:0;margin-bottom:0;border-bottom:0.5px solid var(--color-border-tertiary);flex-wrap:wrap;background:var(--color-background-primary);border-radius:var(--border-radius-lg) var(--border-radius-lg) 0 0;padding:0 .5rem;}
+.tab{font-size:12px;padding:10px 14px;border:none;background:none;cursor:pointer;color:var(--color-text-secondary);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;}
+.tab.active{color:var(--color-text-primary);border-bottom-color:#185FA5;font-weight:500;}
+.tab-content{background:var(--color-background-primary);border-radius:0 0 var(--border-radius-lg) var(--border-radius-lg);padding:1.25rem;border:0.5px solid var(--color-border-tertiary);border-top:none;}
+.sec{display:none;}.sec.active{display:block;}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem 1.25rem;margin-bottom:1rem;}
+.card-title{font-size:13px;font-weight:500;color:var(--color-text-secondary);margin-bottom:.75rem;}
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1rem;}
+.vendor-bar{margin-bottom:8px;}
+.vendor-bar .top{display:flex;justify-content:space-between;margin-bottom:3px;}
+.bar-bg{background:var(--color-background-secondary);border-radius:4px;height:7px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:4px;}
+.tbl-wrap{overflow-x:auto;margin-bottom:.75rem;}
+table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;}
+th{text-align:left;padding:8px 10px;background:var(--color-background-secondary);color:var(--color-text-secondary);font-weight:500;border-bottom:0.5px solid var(--color-border-tertiary);white-space:nowrap;cursor:pointer;}
+td{padding:8px 10px;border-bottom:0.5px solid var(--color-border-tertiary);vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+tr.clickable:hover td{background:#E6F1FB;cursor:pointer;}
+.badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:999px;font-weight:500;}
+.b-red{background:#FCEBEB;color:#A32D2D;}.b-amber{background:#FAEEDA;color:#854F0B;}.b-green{background:#EAF3DE;color:#3B6D11;}.b-blue{background:#E6F1FB;color:#185FA5;}.b-purple{background:#EEEDFE;color:#3C3489;}.b-gray{background:#F1EFE8;color:#5F5E5A;}
+.filters{display:flex;gap:8px;margin-bottom:.5rem;flex-wrap:wrap;align-items:center;}
+.filters select,.filters input{font-size:12px;padding:6px 10px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary);outline:none;}
+.filters select:focus,.filters input:focus{border-color:#185FA5;}
+.btn{font-size:12px;padding:7px 14px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary);cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:background .15s;}
+.btn:hover{background:var(--color-background-secondary);}
+.btn-primary{background:#185FA5;color:#fff;border-color:#185FA5;}.btn-primary:hover{background:#0C447C;}
+.btn-success{background:#EAF3DE;color:#3B6D11;border-color:#C0DD97;}
+.btn-danger{background:#FCEBEB;color:#A32D2D;border-color:#F7C1C1;}.btn-danger:hover{background:#F7C1C1;}
+.filter-total{display:none;background:var(--color-background-primary);border:0.5px solid #B5D4F4;border-radius:var(--border-radius-md);padding:.65rem 1rem;margin-bottom:.75rem;font-size:12px;align-items:center;gap:10px;flex-wrap:wrap;}
+.filter-total.show{display:flex;}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:1rem;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--color-background-primary);border-radius:var(--border-radius-lg);padding:1.5rem;width:100%;max-width:440px;border:0.5px solid var(--color-border-tertiary);max-height:90vh;overflow-y:auto;}
+.modal h3{font-size:15px;font-weight:500;margin-bottom:1rem;}
+.mfooter{display:flex;gap:8px;justify-content:flex-end;margin-top:1rem;}
+.frow{margin-bottom:.7rem;}
+.frow label{font-size:12px;color:var(--color-text-secondary);display:block;margin-bottom:3px;}
+.frow input,.frow select,.frow textarea{width:100%;font-size:13px;padding:8px 10px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary);outline:none;font-family:var(--font-sans);}
+.frow input:focus,.frow select:focus,.frow textarea:focus{border-color:#185FA5;}
+.frow textarea{resize:vertical;min-height:64px;}
+.import-zone{border:1.5px dashed var(--color-border-secondary);border-radius:var(--border-radius-lg);padding:2rem;text-align:center;cursor:pointer;background:var(--color-background-secondary);}
+.import-zone:hover{border-color:#185FA5;}
+.mon-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:0 var(--border-radius-lg) var(--border-radius-lg) 0;padding:.9rem 1.1rem;margin-bottom:8px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.mon-card.alert{border-left:3px solid #E24B4A;}.mon-card.warn{border-left:3px solid #EF9F27;}.mon-card.ok{border-left:3px solid #639922;}.mon-card.neutral{border-left:3px solid #888780;}
+.sum-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:13px;}
+.sum-row:last-child{border:none;font-weight:500;}
+.notif{border-radius:var(--border-radius-md);padding:.65rem 1rem;font-size:12px;margin-bottom:1rem;display:flex;align-items:center;gap:8px;}
+.notif.info{background:#E6F1FB;border:0.5px solid #B5D4F4;color:#185FA5;}
+.notif.success{background:#EAF3DE;border:0.5px solid #C0DD97;color:#3B6D11;}
+.cli-header{display:flex;align-items:center;gap:12px;margin-bottom:1rem;padding-bottom:1rem;border-bottom:0.5px solid var(--color-border-tertiary);}
+.cli-avatar{width:44px;height:44px;border-radius:50%;background:#E6F1FB;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:15px;color:#185FA5;flex-shrink:0;}
+.cli-total-box{background:#E6F1FB;border:0.5px solid #B5D4F4;border-radius:var(--border-radius-md);padding:.65rem 1rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;}
+.search-empty{text-align:center;padding:2.5rem;color:var(--color-text-secondary);font-size:13px;}
+@media(max-width:600px){.chart-row{grid-template-columns:1fr;}.hdr{flex-direction:column;align-items:flex-start;}}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="hdr">
+  <div>
+    <h1><i class="ti ti-chart-bar" style="font-size:20px;vertical-align:-3px;margin-right:8px;"></i>Dashboard financeiro</h1>
+    <span style="font-size:11px;color:var(--color-text-secondary);">Atualizado em: <b id="dt-label"></b> &nbsp;·&nbsp; <span id="import-info" style="color:#185FA5;"></span> &nbsp;·&nbsp; <span id="db-status" style="color:#854F0B;">● Conectando...</span></span>
+  </div>
+  <button class="btn btn-primary" onclick="openImport()"><i class="ti ti-upload"></i> Importar planilha</button>
+</div>
+
+<div id="notif-area"></div>
+<div class="metrics" id="metrics-row"></div>
+
+<div class="tabs">
+  <button class="tab active" id="tab-atraso" onclick="showTab('atraso')">Clientes em atraso</button>
+  <button class="tab" id="tab-monitor" onclick="showTab('monitor')"><i class="ti ti-eye" style="font-size:12px;"></i> Monitoramento</button>
+  <button class="tab" id="tab-historico" onclick="showTab('historico')">Última importação</button>
+  <button class="tab" id="tab-vendedores" onclick="showTab('vendedores')">Vendedores</button>
+  <button class="tab" id="tab-receber" onclick="showTab('receber')">A receber</button>
+</div>
+
+<div class="tab-content">
+
+<div class="sec active" id="sec-atraso">
+  <div class="chart-row">
+    <div class="card"><div class="card-title">Total em atraso por vendedor</div><div id="vendor-bars"></div></div>
+    <div class="card">
+      <div class="card-title">Distribuição</div>
+      <div style="position:relative;height:190px;"><canvas id="pieChart"></canvas></div>
+      <div id="pie-legend" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;font-size:11px;"></div>
+    </div>
+  </div>
+  <div class="filters">
+    <select id="fv" onchange="renderTable()"><option value="">Todos os vendedores</option></select>
+    <select id="fc-sel" onchange="onClienteSelect()"><option value="">Todos os clientes</option></select>
+    <input type="text" id="fc" placeholder="Buscar cliente..." oninput="renderTable()" style="width:140px;">
+    <select id="fa" onchange="renderTable()">
+      <option value="">Todos os atrasos</option>
+      <option value="grave">Grave (&gt;30 dias)</option>
+      <option value="medio">Médio (15–30 dias)</option>
+      <option value="recente">Recente (&lt;15 dias)</option>
+    </select>
+    <span style="font-size:11px;color:var(--color-text-secondary);">Mostrando <b id="cnt"></b> registros</span>
+  </div>
+  <div class="filter-total" id="filter-total">
+    <i class="ti ti-user-circle" style="font-size:18px;color:#185FA5;flex-shrink:0;"></i>
+    <div>
+      <div style="font-weight:500;font-size:13px;" id="ft-nome"></div>
+      <div style="font-size:11px;color:var(--color-text-secondary);margin-top:2px;"><span id="ft-titulos"></span> títulos &nbsp;·&nbsp; <span id="ft-vencidos"></span> vencidos &nbsp;·&nbsp; Vendedor: <span id="ft-vend"></span></div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;margin-left:auto;">
+      <span style="font-size:11px;color:var(--color-text-secondary);">Dívida total</span>
+      <span style="font-size:18px;font-weight:500;color:#185FA5;" id="ft-value"></span>
+    </div>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <colgroup><col style="width:100px"><col style="width:140px"><col style="width:100px"><col style="width:100px"><col style="width:70px"><col style="width:75px"></colgroup>
+      <thead><tr>
+        <th onclick="sortBy('vendedor')">Vendedor ↕</th>
+        <th onclick="sortBy('cliente')">Cliente ↕ <span style="font-size:10px;font-weight:400;color:var(--color-text-secondary);">clique p/ detalhe</span></th>
+        <th onclick="sortBy('atrasado')">Valor ↕</th>
+        <th onclick="sortBy('data_vencimento')">Vencimento ↕</th>
+        <th onclick="sortBy('_dias')">Atraso ↕</th>
+        <th>Status</th>
+      </tr></thead>
+      <tbody id="tbl-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="sec" id="sec-monitor">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
+    <div><span style="font-size:13px;font-weight:500;">Clientes em monitoramento</span><span style="font-size:11px;color:var(--color-text-secondary);margin-left:8px;">Acompanhe antes de novas vendas</span></div>
+    <button class="btn btn-primary" onclick="openAddMon()"><i class="ti ti-plus"></i> Cadastrar cliente</button>
+  </div>
+  <div class="filters" style="margin-bottom:1rem;">
+    <input type="text" id="mon-search" placeholder="Buscar nome ou vendedor..." oninput="renderMonitor()" style="width:220px;">
+    <select id="mon-filter-status" onchange="renderMonitor()"><option value="">Todos os status</option><option value="bloqueado">Bloqueado</option><option value="atencao">Atenção</option><option value="liberado">Liberado</option><option value="monitorando">Monitorando</option></select>
+    <select id="mon-filter-vend" onchange="renderMonitor()"><option value="">Todos os vendedores</option></select>
+  </div>
+  <div id="mon-metrics" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:1rem;"></div>
+  <div id="mon-list"></div>
+  <div id="mon-empty" class="search-empty" style="display:none;"><i class="ti ti-eye-off" style="font-size:36px;display:block;margin-bottom:10px;"></i>Nenhum cliente cadastrado para monitoramento.</div>
+</div>
+
+<div class="sec" id="sec-historico">
+  <div id="hist-empty" style="text-align:center;padding:3rem;color:var(--color-text-secondary);font-size:13px;"><i class="ti ti-file-import" style="font-size:36px;display:block;margin-bottom:10px;"></i>Nenhuma importação realizada ainda.</div>
+  <div id="hist-content" style="display:none;">
+    <div style="display:flex;gap:8px;margin-bottom:.75rem;flex-wrap:wrap;">
+      <span style="font-size:11px;display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:#C0DD97;display:inline-block;"></span>Novos / mantidos</span>
+      <span style="font-size:11px;display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:#F7C1C1;display:inline-block;"></span>Pagos (removidos)</span>
+    </div>
+    <div id="hist-stats" style="display:flex;gap:10px;margin-bottom:1rem;flex-wrap:wrap;"></div>
+    <div class="tbl-wrap"><table><colgroup><col style="width:100px"><col style="width:140px"><col style="width:100px"><col style="width:100px"><col style="width:100px"></colgroup><thead><tr><th>Vendedor</th><th>Cliente</th><th>Valor</th><th>Vencimento</th><th>Situação</th></tr></thead><tbody id="hist-body"></tbody></table></div>
+  </div>
+</div>
+
+<div class="sec" id="sec-vendedores">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+    <span style="font-size:13px;color:var(--color-text-secondary);">Gerencie os vendedores</span>
+    <button class="btn btn-primary" onclick="openAddV()"><i class="ti ti-plus"></i> Novo vendedor</button>
+  </div>
+  <div id="vlist"></div>
+  <div class="card" style="margin-top:.5rem;"><div class="card-title">Resumo</div><div id="vsummary"></div></div>
+</div>
+
+<div class="sec" id="sec-receber">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+    <span style="font-size:13px;color:var(--color-text-secondary);">Contas a receber futuras</span>
+    <button class="btn btn-primary" onclick="openAddAR()"><i class="ti ti-plus"></i> Nova conta</button>
+  </div>
+  <div class="tbl-wrap"><table><colgroup><col style="width:100px"><col style="width:130px"><col style="width:100px"><col style="width:100px"><col><col style="width:55px"></colgroup><thead><tr><th>Vendedor</th><th>Cliente</th><th>Valor</th><th>Vencimento</th><th>Obs.</th><th></th></tr></thead><tbody id="ar-body"></tbody></table></div>
+  <div id="ar-empty" class="search-empty"><i class="ti ti-inbox" style="font-size:36px;display:block;margin-bottom:10px;"></i>Nenhuma conta cadastrada.</div>
+  <div class="card" id="ar-totals-card" style="display:none;"><div class="card-title">Totais previstos</div><div id="ar-totals"></div></div>
+</div>
+
+</div>
+
+<!-- MODAL DETALHE CLIENTE -->
+<div class="modal-overlay" id="modal-cliente">
+  <div class="modal">
+    <div class="cli-header">
+      <div class="cli-avatar" id="cli-avatar"></div>
+      <div style="flex:1;">
+        <div style="font-size:16px;font-weight:500;" id="cli-nome"></div>
+        <div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px;" id="cli-vendedor"></div>
+      </div>
+      <div id="cli-mon-badge"></div>
+    </div>
+    <div class="cli-total-box">
+      <div><div style="font-size:12px;color:#185FA5;">Total da dívida</div><div style="font-size:11px;color:#185FA5;margin-top:2px;" id="cli-titulos-count"></div></div>
+      <div style="font-size:22px;font-weight:500;color:#185FA5;" id="cli-total"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem;">
+      <div class="metric"><div class="lbl">Maior título</div><div class="val" style="font-size:15px;" id="cli-maior"></div></div>
+      <div class="metric danger"><div class="lbl">Mais antigo</div><div class="val" style="font-size:15px;" id="cli-mais-antigo"></div><div class="sub" id="cli-dias-antigo"></div></div>
+    </div>
+    <div style="font-size:13px;font-weight:500;color:var(--color-text-secondary);margin-bottom:.5rem;">Títulos em aberto</div>
+    <div style="max-height:220px;overflow-y:auto;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);">
+      <table style="font-size:12px;width:100%;border-collapse:collapse;">
+        <thead><tr>
+          <th style="padding:6px 10px;background:var(--color-background-secondary);border-bottom:0.5px solid var(--color-border-tertiary);font-weight:500;color:var(--color-text-secondary);">Vencimento</th>
+          <th style="padding:6px 10px;background:var(--color-background-secondary);border-bottom:0.5px solid var(--color-border-tertiary);font-weight:500;color:var(--color-text-secondary);">Valor</th>
+          <th style="padding:6px 10px;background:var(--color-background-secondary);border-bottom:0.5px solid var(--color-border-tertiary);font-weight:500;color:var(--color-text-secondary);">Atraso</th>
+          <th style="padding:6px 10px;background:var(--color-background-secondary);border-bottom:0.5px solid var(--color-border-tertiary);font-weight:500;color:var(--color-text-secondary);">Status</th>
+        </tr></thead>
+        <tbody id="cli-titulos"></tbody>
+      </table>
+    </div>
+    <div class="mfooter"><button class="btn" onclick="closeModal('modal-cliente')">Fechar</button></div>
+  </div>
+</div>
+
+<!-- MODAL IMPORTAR -->
+<div class="modal-overlay" id="modal-import">
+  <div class="modal">
+    <h3><i class="ti ti-upload" style="font-size:15px;margin-right:6px;vertical-align:-1px;"></i>Importar nova planilha</h3>
+    <p style="font-size:12px;color:var(--color-text-secondary);margin-bottom:1rem;">Clientes que não constarem na nova planilha serão removidos (considerados pagos).</p>
+    <div class="import-zone" onclick="document.getElementById('file-input').click()">
+      <i class="ti ti-file-spreadsheet" style="font-size:32px;color:var(--color-text-secondary);"></i>
+      <p style="font-size:13px;color:var(--color-text-secondary);margin-top:.5rem;">Clique para selecionar o arquivo .xlsx</p>
+      <p id="file-name" style="font-weight:500;margin-top:4px;font-size:13px;"></p>
+    </div>
+    <input type="file" id="file-input" accept=".xlsx,.xls" style="display:none;" onchange="handleFile(this)">
+    <div id="preview-area" style="display:none;margin-top:1rem;">
+      <div id="preview-stats" style="margin-bottom:.75rem;"></div>
+      <div style="display:flex;gap:10px;margin-bottom:.5rem;flex-wrap:wrap;">
+        <span style="font-size:11px;display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:#C0DD97;display:inline-block;"></span>Novos / mantidos</span>
+        <span style="font-size:11px;display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:#F7C1C1;display:inline-block;"></span>Pagos (serão removidos)</span>
+      </div>
+      <div style="max-height:220px;overflow-y:auto;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);">
+        <table style="font-size:11px;width:100%;border-collapse:collapse;table-layout:fixed;">
+          <colgroup><col style="width:75px"><col style="width:110px"><col style="width:80px"><col style="width:85px"><col style="width:80px"></colgroup>
+          <thead><tr>
+            <th style="padding:5px 8px;background:var(--color-background-secondary);border-bottom:0.5px solid var(--color-border-tertiary);font-weight:500;color:var(--color-text-secondary);">Vendedor</th>
+            <th style="padding:5px 8px;background:var(--color-background-secondary);border-bottom:0.5px solid var(--color-border-tertiary);font-weight:500;color:var(--color-text-secondary);">Cliente</th>
+            <th style="padding:5px 8px;background:var(--color-background-secondary);border-bottom:0.5px solid var(--color-border-tertiary);font-weight:500;color:var(--color-text-secondary);">Valor</th>
+            <th style="padding:5px 8px;background:var(--color-background-secondary);border-bottom:0.5px solid var(--color-border-tertiary);font-weight:500;color:var(--color-text-secondary);">Vencimento</th>
+            <th style="padding:5px 8px;background:var(--color-background-secondary);border-bottom:0.5px solid var(--color-border-tertiary);font-weight:500;color:var(--color-text-secondary);">Situação</th>
+          </tr></thead>
+          <tbody id="preview-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="mfooter">
+      <button class="btn" onclick="closeModal('modal-import')">Cancelar</button>
+      <button class="btn btn-success" id="btn-confirm-import" style="display:none;" onclick="confirmImport()"><i class="ti ti-check"></i> Confirmar importação</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MONITORAMENTO -->
+<div class="modal-overlay" id="modal-mon">
+  <div class="modal">
+    <h3 id="mon-modal-title">Cadastrar cliente para monitoramento</h3>
+    <div class="frow"><label>Nome do cliente *</label><input type="text" id="mon-nome" placeholder="Ex: SAIKO"></div>
+    <div class="frow"><label>Vendedor responsável *</label><select id="mon-vend-sel"></select></div>
+    <div class="frow"><label>Status de crédito *</label>
+      <select id="mon-status">
+        <option value="bloqueado">Bloqueado — não vender</option>
+        <option value="atencao">Atenção — analisar antes</option>
+        <option value="monitorando">Monitorando — acompanhar</option>
+        <option value="liberado">Liberado — pago, ok vender</option>
+      </select>
+    </div>
+    <div class="frow"><label>Valor em atraso (R$)</label><input type="number" id="mon-valor" placeholder="0,00" step="0.01"></div>
+    <div class="frow"><label>Limite de crédito (R$)</label><input type="number" id="mon-limite" placeholder="Ex: 5000,00" step="0.01"></div>
+    <div class="frow"><label>Observações</label><textarea id="mon-obs" placeholder="Ex: Aguardando pagamento."></textarea></div>
+    <input type="hidden" id="mon-edit-idx" value="">
+    <div class="mfooter"><button class="btn" onclick="closeModal('modal-mon')">Cancelar</button><button class="btn btn-primary" onclick="saveMon()"><i class="ti ti-check"></i> Salvar</button></div>
+  </div>
+</div>
+
+<!-- MODAL VENDEDOR -->
+<div class="modal-overlay" id="modal-vend">
+  <div class="modal" style="max-width:340px;">
+    <h3>Adicionar vendedor</h3>
+    <div class="frow"><label>Nome</label><input type="text" id="inp-vname" placeholder="Ex: CARLOS"></div>
+    <div class="mfooter"><button class="btn" onclick="closeModal('modal-vend')">Cancelar</button><button class="btn btn-primary" onclick="saveV()">Salvar</button></div>
+  </div>
+</div>
+
+<!-- MODAL A RECEBER -->
+<div class="modal-overlay" id="modal-ar">
+  <div class="modal" style="max-width:360px;">
+    <h3>Nova conta a receber</h3>
+    <div class="frow"><label>Vendedor</label><select id="ar-v"></select></div>
+    <div class="frow"><label>Cliente</label><input type="text" id="ar-c" placeholder="Nome do cliente"></div>
+    <div class="frow"><label>Valor (R$)</label><input type="number" id="ar-val" step="0.01" placeholder="0,00"></div>
+    <div class="frow"><label>Vencimento</label><input type="date" id="ar-dt"></div>
+    <div class="frow"><label>Observação</label><input type="text" id="ar-obs" placeholder="Opcional"></div>
+    <div class="mfooter"><button class="btn" onclick="closeModal('modal-ar')">Cancelar</button><button class="btn btn-primary" onclick="saveAR()">Salvar</button></div>
+  </div>
+</div>
+
+</div>
+<script>
+const TODAY=new Date();
+const CMAP={FERNANDO:'#185FA5',BERNARDO:'#3B6D11',BRUNA:'#993556',BRUNO:'#854F0B'};
+function gc(v,i){return CMAP[v]||['#185FA5','#3B6D11','#993556','#854F0B','#534AB7','#993C1D'][i%6];}
+const STATUS_CFG={bloqueado:{label:'Bloqueado',cls:'b-red',cardCls:'alert',icon:'ti-ban'},atencao:{label:'Atenção',cls:'b-amber',cardCls:'warn',icon:'ti-alert-triangle'},monitorando:{label:'Monitorando',cls:'b-purple',cardCls:'neutral',icon:'ti-eye'},liberado:{label:'Liberado',cls:'b-green',cardCls:'ok',icon:'ti-circle-check'}};
+const RAW=[{vendedor:"FERNANDO",cliente:"SAIKO",atrasado:1230,data_vencimento:"15/05/2026"},{vendedor:"FERNANDO",cliente:"SAIKO",atrasado:1652.2,data_vencimento:"23/05/2026"},{vendedor:"FERNANDO",cliente:"SAIKO",atrasado:2209.8,data_vencimento:"30/05/2026"},{vendedor:"FERNANDO",cliente:"SAIKO",atrasado:1651.8,data_vencimento:"03/06/2026"},{vendedor:"FERNANDO",cliente:"SAIKO",atrasado:1148.5,data_vencimento:"04/06/2026"},{vendedor:"FERNANDO",cliente:"SAIKO",atrasado:1693.9,data_vencimento:"06/06/2026"},{vendedor:"FERNANDO",cliente:"MAR POKE",atrasado:861.6,data_vencimento:"29/05/2026"},{vendedor:"FERNANDO",cliente:"MAR POKE",atrasado:780,data_vencimento:"03/06/2026"},{vendedor:"FERNANDO",cliente:"MAR POKE",atrasado:566.7,data_vencimento:"05/06/2026"},{vendedor:"FERNANDO",cliente:"HANTHAY",atrasado:586.17,data_vencimento:"02/06/2026"},{vendedor:"FERNANDO",cliente:"HANTHAY",atrasado:791.97,data_vencimento:"03/06/2026"},{vendedor:"FERNANDO",cliente:"HANTHAY",atrasado:641.55,data_vencimento:"04/06/2026"},{vendedor:"FERNANDO",cliente:"HANTHAY",atrasado:746.05,data_vencimento:"04/06/2026"},{vendedor:"FERNANDO",cliente:"ORIENTE",atrasado:344.35,data_vencimento:"03/06/2026"},{vendedor:"FERNANDO",cliente:"ORIENTE",atrasado:1227.6,data_vencimento:"04/06/2026"},{vendedor:"FERNANDO",cliente:"ORIENTE",atrasado:627.67,data_vencimento:"04/06/2026"},{vendedor:"FERNANDO",cliente:"ORIENTE",atrasado:441.9,data_vencimento:"04/06/2026"},{vendedor:"FERNANDO",cliente:"ORIENTE",atrasado:322.13,data_vencimento:"05/06/2026"},{vendedor:"FERNANDO",cliente:"NOHANA",atrasado:623.3,data_vencimento:"05/06/2026"},{vendedor:"FERNANDO",cliente:"YAKISOBA DO MIGUELITO",atrasado:271.2,data_vencimento:"05/06/2026"},{vendedor:"FERNANDO",cliente:"KAMI",atrasado:933.8,data_vencimento:"05/06/2026"},{vendedor:"FERNANDO",cliente:"SUSHI SHOP",atrasado:1287.35,data_vencimento:"05/06/2026"},{vendedor:"BRUNO",cliente:"HAMEI KOBRASOL",atrasado:683.1,data_vencimento:"29/04/2026"},{vendedor:"BRUNO",cliente:"KIME",atrasado:252.17,data_vencimento:"04/06/2026"},{vendedor:"BRUNO",cliente:"SANTO KANTO",atrasado:253.85,data_vencimento:"03/06/2026"},{vendedor:"BRUNO",cliente:"SANTO KANTO",atrasado:440.21,data_vencimento:"02/06/2026"},{vendedor:"BERNARDO",cliente:"KAZUAKI",atrasado:1121.2,data_vencimento:"05/06/2026"},{vendedor:"BERNARDO",cliente:"KAZUAKI",atrasado:1156.1,data_vencimento:"05/06/2026"},{vendedor:"BERNARDO",cliente:"TAKIRA",atrasado:331,data_vencimento:"14/05/2026"},{vendedor:"BERNARDO",cliente:"TAKIRA",atrasado:331,data_vencimento:"21/05/2026"},{vendedor:"BERNARDO",cliente:"TAKIRA",atrasado:385.6,data_vencimento:"27/05/2026"},{vendedor:"BERNARDO",cliente:"TAKIRA",atrasado:331,data_vencimento:"28/05/2026"},{vendedor:"BERNARDO",cliente:"TAKIRA",atrasado:435.78,data_vencimento:"28/05/2026"},{vendedor:"BERNARDO",cliente:"TAKIRA",atrasado:435.78,data_vencimento:"04/06/2026"},{vendedor:"BERNARDO",cliente:"DOZO",atrasado:1579.31,data_vencimento:"03/06/2026"},{vendedor:"BERNARDO",cliente:"DOZO",atrasado:891.85,data_vencimento:"03/06/2026"},{vendedor:"BERNARDO",cliente:"DOZO",atrasado:552.73,data_vencimento:"03/06/2026"},{vendedor:"BERNARDO",cliente:"DOZO",atrasado:1628.1,data_vencimento:"03/06/2026"},{vendedor:"BERNARDO",cliente:"DOZO",atrasado:1092.05,data_vencimento:"03/06/2026"},{vendedor:"BERNARDO",cliente:"KYOUDAI",atrasado:816.87,data_vencimento:"13/05/2026"},{vendedor:"BERNARDO",cliente:"KYOUDAI",atrasado:816.87,data_vencimento:"20/05/2026"},{vendedor:"BERNARDO",cliente:"KYOUDAI",atrasado:720.16,data_vencimento:"05/06/2026"},{vendedor:"BERNARDO",cliente:"MIYAGI",atrasado:357.35,data_vencimento:"14/05/2026"},{vendedor:"BERNARDO",cliente:"MIYAGI",atrasado:536.74,data_vencimento:"14/05/2026"},{vendedor:"BERNARDO",cliente:"MIYAGI",atrasado:573.5,data_vencimento:"28/05/2026"},{vendedor:"BERNARDO",cliente:"MIYAGI",atrasado:573.5,data_vencimento:"04/06/2026"},{vendedor:"BERNARDO",cliente:"MIYAGI",atrasado:445.1,data_vencimento:"19/05/2026"},{vendedor:"BERNARDO",cliente:"ESTRELA",atrasado:1380.84,data_vencimento:"20/05/2026"},{vendedor:"BERNARDO",cliente:"ESTRELA",atrasado:1380.84,data_vencimento:"27/05/2026"},{vendedor:"BERNARDO",cliente:"ESTRELA",atrasado:1221.49,data_vencimento:"20/05/2026"},{vendedor:"BERNARDO",cliente:"ESTRELA",atrasado:1221.49,data_vencimento:"27/05/2026"},{vendedor:"BERNARDO",cliente:"ESTRELA",atrasado:1221.49,data_vencimento:"03/06/2026"},{vendedor:"BERNARDO",cliente:"ESTRELA",atrasado:1568.74,data_vencimento:"20/05/2026"},{vendedor:"BERNARDO",cliente:"ESTRELA",atrasado:1568.74,data_vencimento:"27/05/2026"},{vendedor:"BERNARDO",cliente:"ESTRELA",atrasado:1568.73,data_vencimento:"03/06/2026"},{vendedor:"BERNARDO",cliente:"ESTRELA",atrasado:965.4,data_vencimento:"29/05/2026"},{vendedor:"BERNARDO",cliente:"ESTRELA",atrasado:1324.37,data_vencimento:"20/05/2026"},{vendedor:"BERNARDO",cliente:"ESTRELA",atrasado:1324.37,data_vencimento:"03/06/2026"},{vendedor:"BERNARDO",cliente:"ESTRELA",atrasado:1388.52,data_vencimento:"01/06/2026"},{vendedor:"BERNARDO",cliente:"ESTRELA",atrasado:1388.51,data_vencimento:"08/06/2026"},{vendedor:"BERNARDO",cliente:"YUSAN",atrasado:682.98,data_vencimento:"05/06/2026"},{vendedor:"BERNARDO",cliente:"MAKOTO",atrasado:4954,data_vencimento:"27/05/2026"},{vendedor:"BERNARDO",cliente:"MAKOTO",atrasado:4806.2,data_vencimento:"03/06/2026"},{vendedor:"BERNARDO",cliente:"MAKOTO",atrasado:4432.8,data_vencimento:"03/06/2026"},{vendedor:"BERNARDO",cliente:"HAI POKE",atrasado:752.1,data_vencimento:"04/06/2026"},{vendedor:"BERNARDO",cliente:"HAI POKE",atrasado:1047.85,data_vencimento:"04/06/2026"},{vendedor:"BERNARDO",cliente:"HAI POKE",atrasado:1064.14,data_vencimento:"05/06/2026"},{vendedor:"BERNARDO",cliente:"HAI POKE",atrasado:438.45,data_vencimento:"05/06/2026"},{vendedor:"BERNARDO",cliente:"HAI POKE",atrasado:413.8,data_vencimento:"05/06/2026"},{vendedor:"BERNARDO",cliente:"HAI POKE",atrasado:776.8,data_vencimento:"05/06/2026"},{vendedor:"BERNARDO",cliente:"HAI POKE",atrasado:432.1,data_vencimento:"05/06/2026"},{vendedor:"BERNARDO",cliente:"HAI POKE",atrasado:795.95,data_vencimento:"05/06/2026"},{vendedor:"BERNARDO",cliente:"ORIEN",atrasado:309.4,data_vencimento:"05/06/2026"},{vendedor:"BERNARDO",cliente:"TAKO POKE",atrasado:408.95,data_vencimento:"05/06/2026"},{vendedor:"BRUNA",cliente:"CHAN",atrasado:338.6,data_vencimento:"03/06/2026"},{vendedor:"BRUNA",cliente:"YAKISO DO JAPA",atrasado:1301.2,data_vencimento:"05/06/2026"},{vendedor:"BRUNA",cliente:"MAKITORO",atrasado:1018.8,data_vencimento:"05/06/2026"},{vendedor:"BRUNA",cliente:"MAKITORO",atrasado:1171.06,data_vencimento:"05/06/2026"},{vendedor:"BRUNA",cliente:"MAKITORO",atrasado:792.66,data_vencimento:"05/06/2026"},{vendedor:"BRUNA",cliente:"KING SUSHI",atrasado:326.05,data_vencimento:"29/05/2026"},{vendedor:"BRUNA",cliente:"KING SUSHI",atrasado:397.76,data_vencimento:"03/06/2026"},{vendedor:"BRUNA",cliente:"KING SUSHI",atrasado:386.57,data_vencimento:"04/06/2026"},{vendedor:"BRUNA",cliente:"MAIA",atrasado:664.11,data_vencimento:"02/06/2026"},{vendedor:"BRUNA",cliente:"KIBO",atrasado:323.95,data_vencimento:"05/06/2026"},{vendedor:"BRUNA",cliente:"AQUARIUM",atrasado:951.3,data_vencimento:"11/05/2026"},{vendedor:"BRUNA",cliente:"AQUARIUM",atrasado:887,data_vencimento:"11/05/2026"},{vendedor:"BRUNA",cliente:"AQUARIUM",atrasado:887,data_vencimento:"18/05/2026"},{vendedor:"BRUNA",cliente:"AQUARIUM",atrasado:887,data_vencimento:"25/05/2026"},{vendedor:"BRUNA",cliente:"AQUARIUM",atrasado:1012.96,data_vencimento:"11/05/2026"},{vendedor:"BRUNA",cliente:"AQUARIUM",atrasado:1012.96,data_vencimento:"18/05/2026"},{vendedor:"BRUNA",cliente:"AQUARIUM",atrasado:1012.96,data_vencimento:"25/05/2026"},{vendedor:"BRUNA",cliente:"AQUARIUM",atrasado:1012.97,data_vencimento:"01/06/2026"},{vendedor:"BRUNA",cliente:"AQUARIUM",atrasado:929.41,data_vencimento:"18/05/2026"},{vendedor:"BRUNA",cliente:"AQUARIUM",atrasado:929.4,data_vencimento:"25/05/2026"},{vendedor:"BRUNA",cliente:"AQUARIUM",atrasado:929.4,data_vencimento:"01/06/2026"},{vendedor:"BRUNA",cliente:"JIRO",atrasado:925,data_vencimento:"02/06/2026"},{vendedor:"BRUNA",cliente:"JIRO",atrasado:430.8,data_vencimento:"03/06/2026"},{vendedor:"BRUNA",cliente:"JIRO",atrasado:914.3,data_vencimento:"02/06/2026"},{vendedor:"BRUNA",cliente:"JIRO",atrasado:458.1,data_vencimento:"03/06/2026"},{vendedor:"BRUNA",cliente:"SUSHINAMI",atrasado:323.35,data_vencimento:"02/06/2026"},{vendedor:"BRUNA",cliente:"SUSHINAMI",atrasado:263,data_vencimento:"05/06/2026"}];
+let data=JSON.parse(JSON.stringify(RAW)),vendors=["FERNANDO","BRUNO","BERNARDO","BRUNA"],monitored=[],ar=[],diffLog=[],lastImport=null,sortKey='atrasado',sortAsc=false,pieChart=null,pendingImport=null;
+function parseDate(s){if(!s)return null;if(s instanceof Date)return s;const p=String(s).split('/');if(p.length===3)return new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0]));return null;}
+function excelDateToStr(v){if(typeof v==='number'){const d=new Date(Math.round((v-25569)*86400*1000));return`${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;}if(v instanceof Date)return`${String(v.getDate()).padStart(2,'0')}/${String(v.getMonth()+1).padStart(2,'0')}/${v.getFullYear()}`;return String(v||'');}
+function dias(d){const dt=parseDate(d);if(!dt)return 0;return Math.floor((TODAY-dt)/86400000);}
+function fmtBRL(v){return'R$ '+parseFloat(v||0).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
+function badge(d){if(d>=30)return'<span class="badge b-red">Grave</span>';if(d>=15)return'<span class="badge b-amber">Médio</span>';return'<span class="badge b-green">Recente</span>';}
+function showNotif(msg,type){const a=document.getElementById('notif-area');a.innerHTML=`<div class="notif ${type||'info'}" style="display:flex;align-items:center;gap:8px;"><i class="ti ti-info-circle"></i>${msg}</div>`;setTimeout(()=>a.innerHTML='',7000);}
+function openClienteDetail(nome){
+  const titulos=data.filter(r=>r.cliente.toUpperCase()===nome.toUpperCase()).sort((a,b)=>dias(b.data_vencimento)-dias(a.data_vencimento));
+  if(!titulos.length)return;
+  const total=titulos.reduce((s,r)=>s+r.atrasado,0),vendedor=titulos[0].vendedor,maior=Math.max(...titulos.map(r=>r.atrasado)),maisAntigo=titulos.reduce((mx,r)=>dias(r.data_vencimento)>dias(mx.data_vencimento)?r:mx,titulos[0]);
+  const iniciais=nome.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+  const mon=monitored.find(m=>m.nome.toUpperCase()===nome.toUpperCase());
+  document.getElementById('cli-avatar').textContent=iniciais;
+  document.getElementById('cli-nome').textContent=nome;
+  document.getElementById('cli-vendedor').textContent='Vendedor: '+vendedor;
+  document.getElementById('cli-total').textContent=fmtBRL(total);
+  document.getElementById('cli-titulos-count').textContent=titulos.length+' título(s) em aberto';
+  document.getElementById('cli-maior').textContent=fmtBRL(maior);
+  document.getElementById('cli-mais-antigo').textContent=maisAntigo.data_vencimento;
+  document.getElementById('cli-dias-antigo').textContent=dias(maisAntigo.data_vencimento)+' dias em atraso';
+  document.getElementById('cli-mon-badge').innerHTML=mon?`<span class="badge ${STATUS_CFG[mon.status]?.cls||'b-gray'}">${STATUS_CFG[mon.status]?.label||mon.status}</span>`:'';
+  document.getElementById('cli-titulos').innerHTML=titulos.map(r=>{const d=dias(r.data_vencimento);return`<tr><td style="padding:6px 10px;border-bottom:0.5px solid var(--color-border-tertiary);">${r.data_vencimento}</td><td style="padding:6px 10px;border-bottom:0.5px solid var(--color-border-tertiary);font-weight:500;">${fmtBRL(r.atrasado)}</td><td style="padding:6px 10px;border-bottom:0.5px solid var(--color-border-tertiary);">${d>0?d+' d':'Hoje'}</td><td style="padding:6px 10px;border-bottom:0.5px solid var(--color-border-tertiary);">${badge(d)}</td></tr>`;}).join('');
+  document.getElementById('modal-cliente').classList.add('open');
+}
+function populateClienteSelect(){const cl=[...new Set(data.map(r=>r.cliente))].sort();document.getElementById('fc-sel').innerHTML='<option value="">Todos os clientes</option>'+cl.map(c=>`<option value="${c}">${c}</option>`).join('');}
+function onClienteSelect(){
+  const nome=document.getElementById('fc-sel').value;
+  document.getElementById('fc').value='';
+  if(nome){
+    const t=data.filter(r=>r.cliente.toUpperCase()===nome.toUpperCase()),total=t.reduce((s,r)=>s+r.atrasado,0),venc=t.filter(r=>dias(r.data_vencimento)>0).length;
+    document.getElementById('ft-nome').textContent=nome;
+    document.getElementById('ft-titulos').textContent=t.length;
+    document.getElementById('ft-vencidos').textContent=venc;
+    document.getElementById('ft-vend').textContent=t[0]?.vendedor||'—';
+    document.getElementById('ft-value').textContent=fmtBRL(total);
+    document.getElementById('filter-total').classList.add('show');
+  } else document.getElementById('filter-total').classList.remove('show');
+  renderTable();
+}
+function calcMetrics(){const total=data.reduce((s,r)=>s+r.atrasado,0),byV={};vendors.forEach(v=>byV[v]=0);data.forEach(r=>{if(byV[r.vendedor]!==undefined)byV[r.vendedor]+=r.atrasado;});return{total,byV,cls:new Set(data.map(r=>r.cliente)).size,graves:data.filter(r=>dias(r.data_vencimento)>=30).length};}
+function renderMetrics(){const m=calcMetrics(),bloq=monitored.filter(x=>x.status==='bloqueado').length;document.getElementById('metrics-row').innerHTML=`<div class="metric"><div class="lbl">Total em atraso</div><div class="val">${fmtBRL(m.total)}</div><div class="sub">${data.length} títulos</div></div><div class="metric"><div class="lbl">Clientes inadimplentes</div><div class="val">${m.cls}</div></div><div class="metric danger"><div class="lbl">Graves (+30 dias)</div><div class="val">${m.graves}</div></div><div class="metric warn"><div class="lbl">Em monitoramento</div><div class="val">${monitored.length}</div><div class="sub">${bloq} bloqueado(s)</div></div>`;}
+function renderBars(){const m=calcMetrics(),s=vendors.map(v=>({v,t:m.byV[v]||0})).sort((a,b)=>b.t-a.t),mx=s[0]?.t||1;document.getElementById('vendor-bars').innerHTML=s.map((x,i)=>`<div class="vendor-bar"><div class="top"><span style="font-size:12px;">${x.v}</span><span style="font-size:12px;font-weight:500;">${fmtBRL(x.t)}</span></div><div class="bar-bg"><div class="bar-fill" style="width:${Math.round(x.t/mx*100)}%;background:${gc(x.v,i)};"></div></div></div>`).join('');}
+function renderPie(){const m=calcMetrics(),lbls=vendors.filter(v=>m.byV[v]>0),vals=lbls.map(v=>m.byV[v]),cols=lbls.map((v,i)=>gc(v,i)),tot=vals.reduce((a,b)=>a+b,0);document.getElementById('pie-legend').innerHTML=lbls.map((v,i)=>`<span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:${cols[i]};display:inline-block;"></span>${v} ${Math.round(vals[i]/tot*100)}%</span>`).join('');if(pieChart)pieChart.destroy();pieChart=new Chart(document.getElementById('pieChart'),{type:'doughnut',data:{labels:lbls,datasets:[{data:vals,backgroundColor:cols,borderWidth:1,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});}
+function renderTable(){
+  const fv=document.getElementById('fv').value,fcSel=document.getElementById('fc-sel').value,fc=document.getElementById('fc').value.toLowerCase(),fa=document.getElementById('fa').value;
+  let rows=data.filter(r=>{if(fv&&r.vendedor!==fv)return false;if(fcSel&&r.cliente!==fcSel)return false;if(fc&&!r.cliente.toLowerCase().includes(fc))return false;if(fa){const d=dias(r.data_vencimento);if(fa==='grave'&&d<30)return false;if(fa==='medio'&&(d<15||d>=30))return false;if(fa==='recente'&&d>=15)return false;}return true;}).map(r=>({...r,_dias:dias(r.data_vencimento)}));
+  rows.sort((a,b)=>{let va=a[sortKey],vb=b[sortKey];if(sortKey==='data_vencimento'){va=parseDate(a.data_vencimento)||new Date(0);vb=parseDate(b.data_vencimento)||new Date(0);}if(va<vb)return sortAsc?-1:1;if(va>vb)return sortAsc?1:-1;return 0;});
+  document.getElementById('cnt').textContent=rows.length;
+  document.getElementById('tbl-body').innerHTML=rows.map(r=>{const mon=monitored.find(m=>m.nome.toUpperCase()===r.cliente.toUpperCase());const mb=mon?`<span class="badge ${STATUS_CFG[mon.status]?.cls||'b-gray'}" style="margin-left:4px;font-size:9px;">${STATUS_CFG[mon.status]?.label||mon.status}</span>`:'';return`<tr class="clickable" onclick="openClienteDetail('${r.cliente.replace(/'/g,"\\'").replace(/"/g,"&quot;")}')"><td>${r.vendedor}</td><td title="${r.cliente}">${r.cliente}${mb}</td><td style="font-weight:500;">${fmtBRL(r.atrasado)}</td><td>${r.data_vencimento}</td><td>${r._dias>0?r._dias+' d':'Hoje'}</td><td>${badge(r._dias)}</td></tr>`;}).join('');
+}
+function sortBy(k){if(sortKey===k)sortAsc=!sortAsc;else{sortKey=k;sortAsc=false;}renderTable();}
+function populateFilters(){const opt='<option value="">Todos os vendedores</option>'+vendors.map(v=>`<option>${v}</option>`).join('');['fv','mon-filter-vend'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=opt;});['ar-v','mon-vend-sel'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=vendors.map(v=>`<option>${v}</option>`).join('');});populateClienteSelect();}
+function renderMonMetrics(){const b=monitored.filter(x=>x.status==='bloqueado').length,a=monitored.filter(x=>x.status==='atencao').length,m=monitored.filter(x=>x.status==='monitorando').length,l=monitored.filter(x=>x.status==='liberado').length;document.getElementById('mon-metrics').innerHTML=`<div class="metric danger"><div class="lbl">Bloqueados</div><div class="val" style="font-size:16px;">${b}</div></div><div class="metric warn"><div class="lbl">Atenção</div><div class="val" style="font-size:16px;">${a}</div></div><div class="metric"><div class="lbl">Monitorando</div><div class="val" style="font-size:16px;">${m}</div></div><div class="metric success"><div class="lbl">Liberados</div><div class="val" style="font-size:16px;">${l}</div></div>`;}
+function renderMonitor(){const search=document.getElementById('mon-search').value.toLowerCase(),fst=document.getElementById('mon-filter-status').value,fv=document.getElementById('mon-filter-vend').value;renderMonMetrics();let list=monitored.filter(m=>{if(search&&!m.nome.toLowerCase().includes(search)&&!m.vendedor.toLowerCase().includes(search))return false;if(fst&&m.status!==fst)return false;if(fv&&m.vendedor!==fv)return false;return true;});const el=document.getElementById('mon-list'),empty=document.getElementById('mon-empty');if(!monitored.length){el.innerHTML='';empty.style.display='block';return;}empty.style.display='none';const order={bloqueado:0,atencao:1,monitorando:2,liberado:3};list.sort((a,b)=>(order[a.status]||9)-(order[b.status]||9));const totalAt=(m)=>data.filter(r=>r.cliente.toUpperCase()===m.nome.toUpperCase()).reduce((s,r)=>s+r.atrasado,0);el.innerHTML=list.map(m=>{const idx=monitored.indexOf(m),cfg=STATUS_CFG[m.status]||{label:m.status,cls:'b-gray',cardCls:'neutral',icon:'ti-circle'};const at=totalAt(m),atTxt=at>0?`<span style="color:#A32D2D;font-weight:500;">${fmtBRL(at)} em aberto</span>`:`<span style="color:#3B6D11;">Sem títulos em aberto</span>`;return`<div class="mon-card ${cfg.cardCls}"><div style="flex:1;min-width:0;"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:500;">${m.nome}</span><span class="badge ${cfg.cls}"><i class="ti ${cfg.icon}" style="font-size:10px;margin-right:2px;"></i>${cfg.label}</span></div><div style="font-size:11px;color:var(--color-text-secondary);margin-top:2px;">${m.vendedor}${m.limite?' · Limite: '+fmtBRL(m.limite):''}${m.valor?' · Declarado: '+fmtBRL(m.valor):''}</div><div style="font-size:11px;color:var(--color-text-secondary);margin-top:3px;">${atTxt}</div>${m.obs?`<div style="font-size:11px;color:var(--color-text-secondary);margin-top:4px;font-style:italic;">"${m.obs}"</div>`:''}</div><div style="display:flex;gap:6px;flex-shrink:0;"><button class="btn" onclick="editMon(${idx})"><i class="ti ti-edit"></i></button><button class="btn btn-danger" onclick="rmMon(${idx})"><i class="ti ti-trash"></i></button></div></div>`;}).join('');if(!list.length&&monitored.length)el.innerHTML='<div class="search-empty"><i class="ti ti-search" style="font-size:28px;display:block;margin-bottom:8px;"></i>Nenhum resultado.</div>';}
+function openAddMon(){document.getElementById('mon-modal-title').textContent='Cadastrar cliente para monitoramento';['mon-nome','mon-valor','mon-limite','mon-obs'].forEach(id=>document.getElementById(id).value='');document.getElementById('mon-status').value='bloqueado';document.getElementById('mon-edit-idx').value='';document.getElementById('mon-vend-sel').innerHTML=vendors.map(v=>`<option>${v}</option>`).join('');document.getElementById('modal-mon').classList.add('open');}
+function editMon(idx){const m=monitored[idx];document.getElementById('mon-modal-title').textContent='Editar cliente monitorado';document.getElementById('mon-nome').value=m.nome;document.getElementById('mon-vend-sel').innerHTML=vendors.map(v=>`<option${v===m.vendedor?' selected':''}>${v}</option>`).join('');document.getElementById('mon-status').value=m.status;document.getElementById('mon-valor').value=m.valor||'';document.getElementById('mon-limite').value=m.limite||'';document.getElementById('mon-obs').value=m.obs||'';document.getElementById('mon-edit-idx').value=idx;document.getElementById('modal-mon').classList.add('open');}
+function saveMon(){const nome=document.getElementById('mon-nome').value.trim().toUpperCase(),vendedor=document.getElementById('mon-vend-sel').value,status=document.getElementById('mon-status').value,valor=document.getElementById('mon-valor').value,limite=document.getElementById('mon-limite').value,obs=document.getElementById('mon-obs').value.trim();if(!nome){alert('Informe o nome do cliente.');return;}const editIdx=document.getElementById('mon-edit-idx').value,obj={nome,vendedor,status,valor:valor?parseFloat(valor):null,limite:limite?parseFloat(limite):null,obs};if(editIdx!==''){monitored[parseInt(editIdx)]=obj;}else{if(monitored.find(m=>m.nome===nome&&m.vendedor===vendedor)){alert('Cliente já cadastrado para este vendedor.');return;}monitored.push(obj);}closeModal('modal-mon');renderMonitor();renderMetrics();renderTable();}
+function rmMon(idx){if(!confirm(`Remover ${monitored[idx].nome} do monitoramento?`))return;monitored.splice(idx,1);renderMonitor();renderMetrics();renderTable();}
+function renderVendors(){const m=calcMetrics();document.getElementById('vlist').innerHTML=vendors.map((v,i)=>{const t=m.byV[v]||0,cnt=data.filter(r=>r.vendedor===v).length,cls=new Set(data.filter(r=>r.vendedor===v).map(r=>r.cliente)).size;return`<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 13px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);margin-bottom:7px;"><div><div style="font-weight:500;font-size:13px;color:${gc(v,i)};">${v}</div><div style="font-size:11px;color:var(--color-text-secondary);">${cnt} títulos · ${cls} clientes · ${fmtBRL(t)}</div></div><button class="btn btn-danger" onclick="rmV('${v}')"><i class="ti ti-trash"></i></button></div>`;}).join('');document.getElementById('vsummary').innerHTML=vendors.map(v=>`<div class="sum-row"><span>${v}</span><span>${data.filter(r=>r.vendedor===v).length} títulos</span><span>${fmtBRL(m.byV[v]||0)}</span></div>`).join('')+`<div class="sum-row"><span>Total</span><span>${data.length}</span><span>${fmtBRL(m.total)}</span></div>`;}
+function rmV(v){if(!confirm('Remover '+v+'?'))return;vendors=vendors.filter(x=>x!==v);renderAll();}
+function openAddV(){document.getElementById('inp-vname').value='';document.getElementById('modal-vend').classList.add('open');}
+function saveV(){const n=document.getElementById('inp-vname').value.trim().toUpperCase();if(!n||vendors.includes(n)){alert(n?'Já existe.':'Informe o nome.');return;}vendors.push(n);closeModal('modal-vend');renderAll();}
+function renderAR(){const tbody=document.getElementById('ar-body'),empty=document.getElementById('ar-empty'),tc=document.getElementById('ar-totals-card');if(!ar.length){tbody.innerHTML='';empty.style.display='block';tc.style.display='none';return;}empty.style.display='none';tc.style.display='block';tbody.innerHTML=ar.map((r,i)=>`<tr><td>${r.vendedor}</td><td title="${r.cliente}">${r.cliente}</td><td>${fmtBRL(r.valor)}</td><td>${r.data}</td><td title="${r.obs||''}">${r.obs||'—'}</td><td><button class="btn btn-danger" onclick="rmAR(${i})"><i class="ti ti-trash"></i></button></td></tr>`).join('');const tot={};vendors.forEach(v=>tot[v]=0);ar.forEach(r=>{if(tot[r.vendedor]!==undefined)tot[r.vendedor]+=r.valor;});document.getElementById('ar-totals').innerHTML=vendors.filter(v=>tot[v]>0).map(v=>`<div class="sum-row"><span>${v}</span><span>${fmtBRL(tot[v])}</span></div>`).join('')+`<div class="sum-row"><span>Total</span><span>${fmtBRL(ar.reduce((s,r)=>s+r.valor,0))}</span></div>`;}
+function rmAR(i){ar.splice(i,1);renderAR();}
+function openAddAR(){['ar-c','ar-val','ar-dt','ar-obs'].forEach(id=>document.getElementById(id).value='');document.getElementById('ar-v').innerHTML=vendors.map(v=>`<option>${v}</option>`).join('');document.getElementById('modal-ar').classList.add('open');}
+function saveAR(){const v=document.getElementById('ar-v').value,c=document.getElementById('ar-c').value.trim(),val=parseFloat(document.getElementById('ar-val').value),dt=document.getElementById('ar-dt').value,obs=document.getElementById('ar-obs').value.trim();if(!c||isNaN(val)||!dt){alert('Preencha todos os campos.');return;}const[y,m,d]=dt.split('-');ar.push({vendedor:v,cliente:c.toUpperCase(),valor:val,data:`${d}/${m}/${y}`,obs});closeModal('modal-ar');renderAR();}
+function openImport(){document.getElementById('file-name').textContent='';document.getElementById('preview-area').style.display='none';document.getElementById('btn-confirm-import').style.display='none';document.getElementById('file-input').value='';pendingImport=null;document.getElementById('modal-import').classList.add('open');}
+function handleFile(inp){const file=inp.files[0];if(!file)return;document.getElementById('file-name').textContent=file.name;const reader=new FileReader();reader.onload=function(e){try{const wb=XLSX.read(e.target.result,{type:'array',cellDates:true}),ws=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''}),newData=[];let hdrIdx=-1;for(let i=0;i<rows.length;i++){if(rows[i].some(c=>String(c).toUpperCase().includes('VENDEDOR'))){hdrIdx=i;break;}}if(hdrIdx<0){alert('Coluna VENDEDOR não encontrada.');return;}const hdr=rows[hdrIdx].map(h=>String(h).toUpperCase().trim()),iV=hdr.findIndex(h=>h.includes('VENDEDOR')),iC=hdr.findIndex(h=>h.includes('CLIENTE')),iA=hdr.findIndex(h=>h.includes('ATRASADO')||h.includes('VALOR')),iD=hdr.findIndex(h=>h.includes('VENCIMENTO')||h.includes('DATA'));if(iV<0||iC<0){alert('Colunas obrigatórias não encontradas.');return;}for(let i=hdrIdx+1;i<rows.length;i++){const r=rows[i],v=String(r[iV]||'').trim().toUpperCase(),c=String(r[iC]||'').trim().toUpperCase();if(!v||!c)continue;const a=iA>=0?parseFloat(r[iA]||0):0;newData.push({vendedor:v,cliente:c,atrasado:isNaN(a)?0:a,data_vencimento:iD>=0?excelDateToStr(r[iD]):''});}if(!newData.length){alert('Nenhum dado encontrado.');return;}buildPreview(newData);pendingImport=newData;}catch(err){alert('Erro: '+err.message);}};reader.readAsArrayBuffer(file);}
+function buildPreview(nd){const ok=new Set(data.map(r=>r.vendedor+'|'+r.cliente+'|'+r.data_vencimento)),nk=new Set(nd.map(r=>r.vendedor+'|'+r.cliente+'|'+r.data_vencimento));const paid=data.filter(r=>!nk.has(r.vendedor+'|'+r.cliente+'|'+r.data_vencimento)),kept=data.filter(r=>nk.has(r.vendedor+'|'+r.cliente+'|'+r.data_vencimento)),added=nd.filter(r=>!ok.has(r.vendedor+'|'+r.cliente+'|'+r.data_vencimento));document.getElementById('preview-stats').innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:.5rem;"><div class="metric" style="flex:1;min-width:80px;"><div class="lbl">Total</div><div class="val" style="font-size:15px;">${nd.length}</div></div><div class="metric success" style="flex:1;min-width:80px;"><div class="lbl">Pagos</div><div class="val" style="font-size:15px;">${paid.length}</div></div><div class="metric" style="flex:1;min-width:80px;"><div class="lbl">Novos</div><div class="val" style="font-size:15px;">${added.length}</div></div><div class="metric" style="flex:1;min-width:80px;"><div class="lbl">Mantidos</div><div class="val" style="font-size:15px;">${kept.length}</div></div></div>`;document.getElementById('preview-body').innerHTML=[...paid.map(r=>({...r,_st:'paid'})),...added.map(r=>({...r,_st:'new'})),...kept.slice(0,15).map(r=>({...r,_st:'kept'}))].map(r=>{const bg=r._st==='paid'?'background:#FCEBEB;':r._st==='new'?'background:#EAF3DE;':'';const lbl=r._st==='paid'?'<span class="badge b-red">Pago</span>':r._st==='new'?'<span class="badge b-green">Novo</span>':'<span class="badge b-blue">Mantido</span>';return`<tr style="${bg}"><td style="padding:5px 8px;">${r.vendedor}</td><td style="padding:5px 8px;overflow:hidden;text-overflow:ellipsis;" title="${r.cliente}">${r.cliente}</td><td style="padding:5px 8px;">${fmtBRL(r.atrasado)}</td><td style="padding:5px 8px;">${r.data_vencimento}</td><td style="padding:5px 8px;">${lbl}</td></tr>`;}).join('');document.getElementById('preview-area').style.display='block';document.getElementById('btn-confirm-import').style.display='inline-flex';}
+function confirmImport(){if(!pendingImport)return;const ok=new Set(data.map(r=>r.vendedor+'|'+r.cliente+'|'+r.data_vencimento)),nk=new Set(pendingImport.map(r=>r.vendedor+'|'+r.cliente+'|'+r.data_vencimento));const paid=data.filter(r=>!nk.has(r.vendedor+'|'+r.cliente+'|'+r.data_vencimento)),added=pendingImport.filter(r=>!ok.has(r.vendedor+'|'+r.cliente+'|'+r.data_vencimento));diffLog=[...paid.map(r=>({...r,_st:'paid'})),...added.map(r=>({...r,_st:'new'})),...data.filter(r=>nk.has(r.vendedor+'|'+r.cliente+'|'+r.data_vencimento)).map(r=>({...r,_st:'kept'}))];data=JSON.parse(JSON.stringify(pendingImport));[...new Set(pendingImport.map(r=>r.vendedor))].forEach(v=>{if(!vendors.includes(v))vendors.push(v);});lastImport=new Date();document.getElementById('import-info').textContent=`Última importação: ${lastImport.toLocaleDateString('pt-BR')} — ${paid.length} pago(s), ${added.length} novo(s)`;closeModal('modal-import');renderHistorico();renderAll();showNotif(`Importação concluída! ${paid.length} removido(s) · ${added.length} novo(s).`,'success');showTab('historico');}
+function renderHistorico(){if(!diffLog.length){document.getElementById('hist-empty').style.display='block';document.getElementById('hist-content').style.display='none';return;}document.getElementById('hist-empty').style.display='none';document.getElementById('hist-content').style.display='block';const paid=diffLog.filter(r=>r._st==='paid'),added=diffLog.filter(r=>r._st==='new'),kept=diffLog.filter(r=>r._st==='kept');document.getElementById('hist-stats').innerHTML=`<div class="metric" style="flex:1;min-width:90px;"><div class="lbl">Total importado</div><div class="val" style="font-size:15px;">${diffLog.length}</div></div><div class="metric success" style="flex:1;min-width:90px;"><div class="lbl">Pagos (removidos)</div><div class="val" style="font-size:15px;">${paid.length}</div><div class="sub">${fmtBRL(paid.reduce((s,r)=>s+r.atrasado,0))}</div></div><div class="metric" style="flex:1;min-width:90px;"><div class="lbl">Novos</div><div class="val" style="font-size:15px;">${added.length}</div></div><div class="metric" style="flex:1;min-width:90px;"><div class="lbl">Mantidos</div><div class="val" style="font-size:15px;">${kept.length}</div></div>`;document.getElementById('hist-body').innerHTML=diffLog.map(r=>{const bg=r._st==='paid'?'background:#FCEBEB;':r._st==='new'?'background:#EAF3DE;':'';const lbl=r._st==='paid'?'<span class="badge b-red">Pago</span>':r._st==='new'?'<span class="badge b-green">Novo</span>':'<span class="badge b-blue">Mantido</span>';return`<tr style="${bg}"><td>${r.vendedor}</td><td title="${r.cliente}">${r.cliente}</td><td>${fmtBRL(r.atrasado)}</td><td>${r.data_vencimento}</td><td>${lbl}</td></tr>`;}).join('');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+function showTab(t){['atraso','monitor','historico','vendedores','receber'].forEach(id=>{document.getElementById('sec-'+id).classList.toggle('active',id===t);document.getElementById('tab-'+id).classList.toggle('active',id===t);});if(t==='monitor'){populateFilters();renderMonitor();}if(t==='vendedores')renderVendors();if(t==='receber')renderAR();}
+function renderAll(){renderMetrics();renderBars();renderPie();populateFilters();renderTable();}
+
+/* ---- FIREBASE FIRESTORE ---- */
+let db=null;
+async function initFirebase(){
+  try{
+    const{initializeApp}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+    const{getFirestore,doc,setDoc,getDoc,onSnapshot,collection}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const app=initializeApp({
+      apiKey:"AIzaSyAlxO5E1AAV_OxtPCmMmqo1Jj4FEzMGz5w",
+      authDomain:"dashboard-financeiro-e6bdc.firebaseapp.com",
+      projectId:"dashboard-financeiro-e6bdc",
+      storageBucket:"dashboard-financeiro-e6bdc.firebasestorage.app",
+      messagingSenderId:"989118401063",
+      appId:"1:989118401063:web:267f7c8588f3bd03a6dc02"
+    });
+    db=getFirestore(app);
+
+    /* Carrega estado inicial */
+    const snap=await getDoc(doc(db,'dashboard','estado'));
+    if(snap.exists()){
+      const d=snap.data();
+      if(d.data&&d.data.length)data=d.data;
+      if(d.vendors&&d.vendors.length)vendors=d.vendors;
+      if(d.monitored)monitored=d.monitored;
+      if(d.ar)ar=d.ar;
+      if(d.diffLog)diffLog=d.diffLog;
+      if(d.lastImport){lastImport=new Date(d.lastImport);document.getElementById('import-info').textContent=`Última importação: ${lastImport.toLocaleDateString('pt-BR')} — ${(d.lastPaid||0)} pago(s), ${(d.lastAdded||0)} novo(s)`;}
+    }
+    renderAll();
+    if(diffLog.length)renderHistorico();
+    setStatusBar('online');
+
+    /* Listener em tempo real — atualiza se outro usuário salvar */
+    onSnapshot(doc(db,'dashboard','estado'),snap=>{
+      if(!snap.exists())return;
+      const d=snap.data();
+      if(d._savedBy===_clientId)return; /* ignora próprias gravações */
+      if(d.data&&d.data.length)data=d.data;
+      if(d.vendors&&d.vendors.length)vendors=d.vendors;
+      if(d.monitored)monitored=d.monitored;
+      if(d.ar)ar=d.ar;
+      if(d.diffLog)diffLog=d.diffLog;
+      if(d.lastImport){lastImport=new Date(d.lastImport);document.getElementById('import-info').textContent=`Última importação: ${lastImport.toLocaleDateString('pt-BR')}`;}
+      renderAll();
+      if(diffLog.length)renderHistorico();
+      showNotif('Dashboard atualizado por outro usuário.','info');
+    });
+
+  }catch(e){
+    console.error('Firebase erro:',e);
+    setStatusBar('offline');
+    showNotif('Sem conexão com banco de dados. Dados não serão salvos.','warn');
+    renderAll();
+  }
+}
+
+const _clientId=Math.random().toString(36).slice(2);
+
+function setStatusBar(status){
+  const bar=document.getElementById('db-status');
+  if(!bar)return;
+  if(status==='online'){bar.textContent='● Banco conectado';bar.style.color='#3B6D11';}
+  else{bar.textContent='● Sem conexão';bar.style.color='#A32D2D';}
+}
+
+async function saveState(){
+  if(!db)return;
+  try{
+    const{doc,setDoc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await setDoc(doc(db,'dashboard','estado'),{
+      data,vendors,monitored,ar,diffLog,
+      lastImport:lastImport?lastImport.toISOString():null,
+      lastPaid:diffLog.filter(r=>r._st==='paid').length,
+      lastAdded:diffLog.filter(r=>r._st==='new').length,
+      _savedBy:_clientId,
+      _savedAt:new Date().toISOString()
+    });
+  }catch(e){console.error('Erro ao salvar:',e);showNotif('Erro ao salvar no banco de dados.','warn');}
+}
+
+/* Sobrescreve funções que alteram estado para incluir saveState() */
+const _saveMon=saveMon;saveMon=function(){_saveMon();saveState();};
+const _rmMon=rmMon;rmMon=function(idx){_rmMon(idx);saveState();};
+const _saveV=saveV;saveV=function(){_saveV();saveState();};
+const _rmV=rmV;rmV=function(v){_rmV(v);saveState();};
+const _saveAR=saveAR;saveAR=function(){_saveAR();saveState();};
+const _rmAR=rmAR;rmAR=function(i){_rmAR(i);saveState();};
+const _confirmImport=confirmImport;confirmImport=function(){_confirmImport();saveState();};
+
+document.getElementById('dt-label').textContent=TODAY.toLocaleDateString('pt-BR');
+initFirebase();
+</script>
+</body>
+</html>
