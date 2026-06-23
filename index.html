@@ -12,9 +12,25 @@
 @media(prefers-color-scheme:dark){:root{--color-background-primary:#1e1e1e;--color-background-secondary:#2a2a2a;--color-background-tertiary:#161616;--color-text-primary:#f0f0f0;--color-text-secondary:#a0a0a0;--color-border-tertiary:rgba(255,255,255,0.12);--color-border-secondary:rgba(255,255,255,0.22);}}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:var(--font-sans);background:var(--color-background-tertiary);color:var(--color-text-primary);min-height:100vh;}
+
+/* LOGIN SCREEN */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1rem;}
+#login-screen.hidden{display:none;}
+.login-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:2rem;width:100%;max-width:360px;}
+.login-card h2{font-size:18px;font-weight:500;margin-bottom:4px;}
+.login-card p{font-size:12px;color:var(--color-text-secondary);margin-bottom:1.5rem;}
+.login-error{background:#FCEBEB;border:0.5px solid #F7C1C1;color:#A32D2D;border-radius:var(--border-radius-md);padding:.65rem 1rem;font-size:12px;margin-bottom:1rem;display:none;}
+.login-error.show{display:block;}
+
+/* DASHBOARD */
+#app-screen{display:none;}
+#app-screen.visible{display:block;}
+
 .page{max-width:960px;margin:0 auto;padding:1.5rem 1rem 3rem;}
 .hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:8px;}
 .hdr h1{font-size:20px;font-weight:500;}
+.hdr-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.user-badge{font-size:11px;color:var(--color-text-secondary);display:flex;align-items:center;gap:5px;}
 .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:1.5rem;}
 .metric{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:.85rem 1rem;}
 .metric .lbl{font-size:11px;color:var(--color-text-secondary);margin-bottom:3px;}
@@ -77,6 +93,24 @@ tr.clickable:hover td{background:#E6F1FB;cursor:pointer;}
 </style>
 </head>
 <body>
+
+<!-- ========== TELA DE LOGIN ========== -->
+<div id="login-screen">
+  <div class="login-card">
+    <h2><i class="ti ti-chart-bar" style="font-size:20px;vertical-align:-3px;margin-right:8px;color:#185FA5;"></i>Dashboard Financeiro</h2>
+    <p>Entre com seu email e senha para acessar.</p>
+    <div class="login-error" id="login-error"></div>
+    <div class="frow"><label>Email</label><input type="email" id="login-email" placeholder="seu@email.com" autocomplete="email"></div>
+    <div class="frow"><label>Senha</label><input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:.5rem;" onclick="doLogin()" id="btn-login">
+      <i class="ti ti-login"></i> Entrar
+    </button>
+    <p style="font-size:11px;color:var(--color-text-secondary);margin-top:1rem;text-align:center;">Não tem acesso? Peça ao administrador para criar sua conta.</p>
+  </div>
+</div>
+
+<!-- ========== DASHBOARD ========== -->
+<div id="app-screen">
 <div class="page">
 
 <div class="hdr">
@@ -84,7 +118,11 @@ tr.clickable:hover td{background:#E6F1FB;cursor:pointer;}
     <h1><i class="ti ti-chart-bar" style="font-size:20px;vertical-align:-3px;margin-right:8px;"></i>Dashboard financeiro</h1>
     <span style="font-size:11px;color:var(--color-text-secondary);">Atualizado em: <b id="dt-label"></b> &nbsp;·&nbsp; <span id="import-info" style="color:#185FA5;"></span> &nbsp;·&nbsp; <span id="db-status" style="color:#854F0B;">● Conectando...</span></span>
   </div>
-  <button class="btn btn-primary" onclick="openImport()"><i class="ti ti-upload"></i> Importar planilha</button>
+  <div class="hdr-right">
+    <span class="user-badge"><i class="ti ti-user-circle" style="font-size:14px;"></i><span id="user-email-label"></span></span>
+    <button class="btn btn-primary" onclick="openImport()"><i class="ti ti-upload"></i> Importar planilha</button>
+    <button class="btn" onclick="doLogout()" title="Sair"><i class="ti ti-logout"></i> Sair</button>
+  </div>
 </div>
 
 <div id="notif-area"></div>
@@ -313,7 +351,9 @@ tr.clickable:hover td{background:#E6F1FB;cursor:pointer;}
   </div>
 </div>
 
-</div>
+</div><!-- /page -->
+</div><!-- /app-screen -->
+
 <script>
 const TODAY=new Date();
 const CMAP={FERNANDO:'#185FA5',BERNARDO:'#3B6D11',BRUNA:'#993556',BRUNO:'#854F0B'};
@@ -396,12 +436,15 @@ function closeModal(id){document.getElementById(id).classList.remove('open');}
 function showTab(t){['atraso','monitor','historico','vendedores','receber'].forEach(id=>{document.getElementById('sec-'+id).classList.toggle('active',id===t);document.getElementById('tab-'+id).classList.toggle('active',id===t);});if(t==='monitor'){populateFilters();renderMonitor();}if(t==='vendedores')renderVendors();if(t==='receber')renderAR();}
 function renderAll(){renderMetrics();renderBars();renderPie();populateFilters();renderTable();}
 
-/* ---- FIREBASE FIRESTORE ---- */
-let db=null;
+/* ---- FIREBASE AUTH + FIRESTORE ---- */
+let db=null, auth=null;
+
 async function initFirebase(){
   try{
     const{initializeApp}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
-    const{getFirestore,doc,setDoc,getDoc,onSnapshot,collection}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const{getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+    const{getFirestore,doc,setDoc,getDoc,onSnapshot}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+
     const app=initializeApp({
       apiKey:"AIzaSyAlxO5E1AAV_OxtPCmMmqo1Jj4FEzMGz5w",
       authDomain:"dashboard-financeiro-e6bdc.firebaseapp.com",
@@ -410,46 +453,95 @@ async function initFirebase(){
       messagingSenderId:"989118401063",
       appId:"1:989118401063:web:267f7c8588f3bd03a6dc02"
     });
+
+    auth=getAuth(app);
     db=getFirestore(app);
 
-    /* Carrega estado inicial */
-    const snap=await getDoc(doc(db,'dashboard','estado'));
-    if(snap.exists()){
-      const d=snap.data();
-      if(d.data&&d.data.length)data=d.data;
-      if(d.vendors&&d.vendors.length)vendors=d.vendors;
-      if(d.monitored)monitored=d.monitored;
-      if(d.ar)ar=d.ar;
-      if(d.diffLog)diffLog=d.diffLog;
-      if(d.lastImport){lastImport=new Date(d.lastImport);document.getElementById('import-info').textContent=`Última importação: ${lastImport.toLocaleDateString('pt-BR')} — ${(d.lastPaid||0)} pago(s), ${(d.lastAdded||0)} novo(s)`;}
-    }
-    renderAll();
-    if(diffLog.length)renderHistorico();
-    setStatusBar('online');
+    /* Expõe funções de login/logout globalmente */
+    window._fbSignIn=(email,password)=>signInWithEmailAndPassword(auth,email,password);
+    window._fbSignOut=()=>signOut(auth);
 
-    /* Listener em tempo real — atualiza se outro usuário salvar */
-    onSnapshot(doc(db,'dashboard','estado'),snap=>{
-      if(!snap.exists())return;
-      const d=snap.data();
-      if(d._savedBy===_clientId)return; /* ignora próprias gravações */
-      if(d.data&&d.data.length)data=d.data;
-      if(d.vendors&&d.vendors.length)vendors=d.vendors;
-      if(d.monitored)monitored=d.monitored;
-      if(d.ar)ar=d.ar;
-      if(d.diffLog)diffLog=d.diffLog;
-      if(d.lastImport){lastImport=new Date(d.lastImport);document.getElementById('import-info').textContent=`Última importação: ${lastImport.toLocaleDateString('pt-BR')}`;}
-      renderAll();
-      if(diffLog.length)renderHistorico();
-      showNotif('Dashboard atualizado por outro usuário.','info');
+    /* Observa estado de autenticação */
+    onAuthStateChanged(auth, async (user)=>{
+      if(user){
+        /* Usuário logado — mostra dashboard */
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('app-screen').classList.add('visible');
+        document.getElementById('user-email-label').textContent=user.email;
+        document.getElementById('dt-label').textContent=TODAY.toLocaleDateString('pt-BR');
+
+        /* Carrega dados do Firestore */
+        const snap=await getDoc(doc(db,'dashboard','estado'));
+        if(snap.exists()){
+          const d=snap.data();
+          if(d.data&&d.data.length)data=d.data;
+          if(d.vendors&&d.vendors.length)vendors=d.vendors;
+          if(d.monitored)monitored=d.monitored;
+          if(d.ar)ar=d.ar;
+          if(d.diffLog)diffLog=d.diffLog;
+          if(d.lastImport){lastImport=new Date(d.lastImport);document.getElementById('import-info').textContent=`Última importação: ${lastImport.toLocaleDateString('pt-BR')} — ${(d.lastPaid||0)} pago(s), ${(d.lastAdded||0)} novo(s)`;}
+        }
+        renderAll();
+        if(diffLog.length)renderHistorico();
+        setStatusBar('online');
+
+        /* Listener em tempo real */
+        onSnapshot(doc(db,'dashboard','estado'),snap=>{
+          if(!snap.exists())return;
+          const d=snap.data();
+          if(d._savedBy===_clientId)return;
+          if(d.data&&d.data.length)data=d.data;
+          if(d.vendors&&d.vendors.length)vendors=d.vendors;
+          if(d.monitored)monitored=d.monitored;
+          if(d.ar)ar=d.ar;
+          if(d.diffLog)diffLog=d.diffLog;
+          if(d.lastImport){lastImport=new Date(d.lastImport);document.getElementById('import-info').textContent=`Última importação: ${lastImport.toLocaleDateString('pt-BR')}`;}
+          renderAll();
+          if(diffLog.length)renderHistorico();
+          showNotif('Dashboard atualizado por outro usuário.','info');
+        });
+
+      } else {
+        /* Não logado — mostra tela de login */
+        document.getElementById('login-screen').classList.remove('hidden');
+        document.getElementById('app-screen').classList.remove('visible');
+      }
     });
 
   }catch(e){
     console.error('Firebase erro:',e);
     setStatusBar('offline');
-    showNotif('Sem conexão com banco de dados. Dados não serão salvos.','warn');
-    renderAll();
   }
 }
+
+async function doLogin(){
+  const email=document.getElementById('login-email').value.trim();
+  const password=document.getElementById('login-password').value;
+  const errEl=document.getElementById('login-error');
+  const btn=document.getElementById('btn-login');
+  errEl.classList.remove('show');
+  btn.disabled=true;btn.textContent='Entrando...';
+  try{
+    await window._fbSignIn(email,password);
+  }catch(e){
+    let msg='Email ou senha incorretos.';
+    if(e.code==='auth/user-not-found')msg='Usuário não encontrado.';
+    else if(e.code==='auth/wrong-password')msg='Senha incorreta.';
+    else if(e.code==='auth/invalid-email')msg='Email inválido.';
+    else if(e.code==='auth/too-many-requests')msg='Muitas tentativas. Tente mais tarde.';
+    errEl.textContent=msg;errEl.classList.add('show');
+  }finally{
+    btn.disabled=false;btn.innerHTML='<i class="ti ti-login"></i> Entrar';
+  }
+}
+
+async function doLogout(){
+  if(confirm('Deseja sair?'))await window._fbSignOut();
+}
+
+/* Enter no campo de senha faz login */
+document.getElementById('login-password').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+document.getElementById('login-email').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('login-password').focus();});
 
 const _clientId=Math.random().toString(36).slice(2);
 
@@ -475,7 +567,6 @@ async function saveState(){
   }catch(e){console.error('Erro ao salvar:',e);showNotif('Erro ao salvar no banco de dados.','warn');}
 }
 
-/* Sobrescreve funções que alteram estado para incluir saveState() */
 const _saveMon=saveMon;saveMon=function(){_saveMon();saveState();};
 const _rmMon=rmMon;rmMon=function(idx){_rmMon(idx);saveState();};
 const _saveV=saveV;saveV=function(){_saveV();saveState();};
@@ -484,7 +575,6 @@ const _saveAR=saveAR;saveAR=function(){_saveAR();saveState();};
 const _rmAR=rmAR;rmAR=function(i){_rmAR(i);saveState();};
 const _confirmImport=confirmImport;confirmImport=function(){_confirmImport();saveState();};
 
-document.getElementById('dt-label').textContent=TODAY.toLocaleDateString('pt-BR');
 initFirebase();
 </script>
 </body>
